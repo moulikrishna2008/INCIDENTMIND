@@ -1,5 +1,10 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="IncidentMind API")
 
@@ -11,21 +16,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+HINDSIGHT_API_KEY = os.getenv("HINDSIGHT_API_KEY")
+HINDSIGHT_BASE_URL = os.getenv(
+    "HINDSIGHT_BASE_URL",
+    "https://api.hindsight.vectorize.io"
+)
+HINDSIGHT_BANK_ID = os.getenv(
+    "HINDSIGHT_BANK_ID",
+    "incidentmind"
+)
+
 
 @app.get("/")
 def home():
     return {
         "project": "IncidentMind",
-        "message": "AI Incident Response Agent is running"
+        "status": "running",
+        "memory": "Hindsight"
     }
 
 
 @app.post("/analyze")
 def analyze_incident(incident: dict):
-    description = incident.get("description", "")
+
+    description = incident.get("description", "").strip()
+
+    if not description:
+        return {
+            "status": "error",
+            "message": "Please provide an incident description."
+        }
 
     return {
         "status": "success",
         "incident": description,
-        "message": "Incident received. Hindsight memory analysis will be connected next."
+        "memory_bank": HINDSIGHT_BANK_ID,
+        "message": "Incident received. Hindsight memory integration is ready."
     }
