@@ -239,26 +239,76 @@ The issue started after a deployment..."
 
 <script>
 
-function analyzeIncident() {
+async function analyzeIncident() {
 
-    const incident = document.getElementById("incident").value;
+    const incident = document.getElementById("incident").value.trim();
     const response = document.getElementById("response");
 
-    if (incident.trim() === "") {
+    if (!incident) {
         response.innerHTML = "⚠️ Please describe the incident first.";
         return;
     }
 
-    response.innerHTML = `
-        <strong>Analyzing incident...</strong>
-        <br><br>
-        Incident received successfully.
-        <br><br>
-        Hindsight memory will be used to retrieve similar
-        past incidents and previous resolutions.
-    `;
-}
+    response.innerHTML = "🔄 Analyzing incident and checking Hindsight memory...";
 
+    try {
+
+        const result = await fetch("http://localhost:8000/analyze", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                description: incident
+            })
+        });
+
+        const data = await result.json();
+
+        if (data.status === "error") {
+            response.innerHTML = `❌ ${data.message}`;
+            return;
+        }
+
+        let memoryHTML = "";
+
+        if (data.similar_incidents && data.similar_incidents.length > 0) {
+
+            memoryHTML = `
+                <br>
+                <strong>🧠 Similar Past Incidents:</strong>
+                <ul>
+                    ${data.similar_incidents.map(memory =>
+                        `<li>${memory.text}</li>`
+                    ).join("")}
+                </ul>
+            `;
+
+        } else {
+
+            memoryHTML = `
+                <br>
+                🧠 No similar past incidents found.
+                <br>
+                This incident has been stored for future learning.
+            `;
+        }
+
+        response.innerHTML = `
+            <strong>✅ Incident analyzed</strong>
+            <br><br>
+            ${memoryHTML}
+        `;
+
+    } catch (error) {
+
+        response.innerHTML = `
+            ❌ Could not connect to IncidentMind backend.
+            <br><br>
+            Make sure the FastAPI server is running.
+        `;
+    }
+}
 </script>
 
 </body>
