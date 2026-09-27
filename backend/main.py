@@ -73,7 +73,7 @@ def analyze_incident(incident: dict):
         result = client.recall(
             bank_id=HINDSIGHT_BANK_ID,
             query=description,
-            limit=5
+            max_tokens=1000
         )
 
         memories = []
