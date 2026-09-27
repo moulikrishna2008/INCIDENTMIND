@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from hindsight_client import Hindsight
 
 load_dotenv()
 
@@ -26,6 +27,14 @@ HINDSIGHT_BANK_ID = os.getenv(
     "incidentmind"
 )
 
+client = None
+
+if HINDSIGHT_API_KEY:
+    client = Hindsight(
+        base_url=HINDSIGHT_BASE_URL,
+        api_key=HINDSIGHT_API_KEY
+    )
+
 
 @app.get("/")
 def home():
@@ -47,9 +56,43 @@ def analyze_incident(incident: dict):
             "message": "Please provide an incident description."
         }
 
-    return {
-        "status": "success",
-        "incident": description,
-        "memory_bank": HINDSIGHT_BANK_ID,
-        "message": "Incident received. Hindsight memory integration is ready."
-    }
+    if client is None:
+        return {
+            "status": "error",
+            "message": "Hindsight API key is not configured."
+        }
+
+    try:
+        # Store the current incident in Hindsight
+        client.retain(
+            bank_id=HINDSIGHT_BANK_ID,
+            content=f"Production incident: {description}"
+        )
+
+        # Search for similar incidents from memory
+        result = client.recall(
+            bank_id=HINDSIGHT_BANK_ID,
+            query=description,
+            limit=5
+        )
+
+        memories = []
+
+        for memory in result.results:
+            memories.append({
+                "type": memory.type,
+                "text": memory.text
+            })
+
+        return {
+            "status": "success",
+            "incident": description,
+            "similar_incidents": memories,
+            "message": "Incident stored and similar incidents recalled from Hindsight."
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
